@@ -9,6 +9,8 @@ class Evento extends Model
     protected $fillable = [
         'usuario_id',
         'fecha',
+        'hora_inicio',
+        'hora_fin',
         'descripcion',
     ];
 

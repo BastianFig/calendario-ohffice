@@ -31,29 +31,33 @@ class EventoController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'usuario'     => 'required|string',
-            'fecha'       => 'required|date_format:d/m/Y',
-            'descripcion' => 'required|string|max:255', 
+            'usuario'      => 'required|string',
+            'fecha'        => 'required|date_format:d/m/Y',
+            'hora_inicio'  => 'nullable|date_format:H:i',
+            'hora_fin'     => 'nullable|date_format:H:i',
+            'descripcion'  => 'required|string|max:255',
 
         ]);
-    
+
         $fecha = Carbon::createFromFormat('d/m/Y', $data['fecha'])->format('Y-m-d');
-    
+
         Log::info('Guardando evento', [
             'usuario'     => $data['usuario'],
             'fecha'       => $fecha,
             'descripcion' => $data['descripcion']
         ]);
-    
+
         $usuario = Usuario::where('nombre', $data['usuario'])->first();
         if (!$usuario) {
             Log::error('Usuario no encontrado: ' . $data['usuario']);
             return response()->json(['error' => 'Usuario no encontrado'], 404);
         }
-    
+
         $evento = Evento::create([
             'usuario_id'  => $usuario->id,
             'fecha'       => $fecha,
+            'hora_inicio' => $data['hora_inicio'] ?? null,
+            'hora_fin'    => $data['hora_fin'] ?? null,
             'descripcion' => $data['descripcion'],
         ]);
     
@@ -74,6 +78,8 @@ class EventoController extends Controller
     {
         $data = $request->validate([
             'descripcion' => 'required|string',
+            'hora_inicio' => 'nullable|date_format:H:i',
+            'hora_fin'    => 'nullable|date_format:H:i',
         ]);
 
         $evento = Evento::find($id);
@@ -82,6 +88,8 @@ class EventoController extends Controller
         }
 
         $evento->descripcion = $data['descripcion'];
+        $evento->hora_inicio = $data['hora_inicio'] ?? null;
+        $evento->hora_fin    = $data['hora_fin'] ?? null;
         $evento->save();
 
         return response()->json([

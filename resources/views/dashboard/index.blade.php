@@ -89,7 +89,12 @@
                      :class="{'bg-white': getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]), 'bg-gray-50': !getEvent('{{ $user['name'] }}', weekDays[{{ $i }}])}"
                      class="w-24 h-24 mx-auto border border-gray-200 flex items-center justify-center rounded cursor-pointer hover:bg-blue-100 transition-colors p-1">
                   <template x-if="getEvent('{{ $user['name'] }}', weekDays[{{ $i }}])">
-                    <span class="text-xs text-black" x-text="truncate(getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]).descripcion)"></span>
+                    <div class="text-center w-full">
+                      <template x-if="getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]).hora_inicio">
+                        <span class="block text-xs font-semibold text-blue-700" x-text="getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]).hora_inicio.substring(0,5) + ' - ' + (getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]).hora_fin ? getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]).hora_fin.substring(0,5) : '?')"></span>
+                      </template>
+                      <span class="text-xs text-black" x-text="truncate(getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]).descripcion)"></span>
+                    </div>
                   </template>
                   <template x-if="!getEvent('{{ $user['name'] }}', weekDays[{{ $i }}])">
                     <span class="text-xs text-gray-500">+</span>
@@ -134,6 +139,19 @@
         </div>
       </div>
       <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700">Horario (opcional)</label>
+        <div class="flex items-center space-x-2 mt-1">
+          <div class="flex-1">
+            <label class="block text-xs text-gray-500 mb-1">Desde</label>
+            <input type="time" x-model="horaInicio" class="block w-full border border-gray-300 rounded-md p-2 text-sm">
+          </div>
+          <div class="flex-1">
+            <label class="block text-xs text-gray-500 mb-1">Hasta</label>
+            <input type="time" x-model="horaFin" class="block w-full border border-gray-300 rounded-md p-2 text-sm">
+          </div>
+        </div>
+      </div>
+      <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700">Descripción</label>
         <textarea x-model="description" class="mt-1 block w-full border border-gray-300 rounded-md p-2" rows="3" placeholder="Ingrese la descripción del evento"></textarea>
       </div>
@@ -165,6 +183,8 @@ function weekCalendar() {
     selectedDate: '',
     selectedDates: [],
     description: '',
+    horaInicio: '',
+    horaFin: '',
     currentFilter: 'todos',
     events: [],
     isEditing: false,
@@ -222,6 +242,8 @@ function weekCalendar() {
       this.selectedDate=this.formatDate(d);
       this.selectedDates=[this.formatDateShort(d)];
       this.description='';
+      this.horaInicio='';
+      this.horaFin='';
       this.modalOpen=true;
     },
     closeModal(){
@@ -243,11 +265,16 @@ function weekCalendar() {
         let descriptionItems = event.descripcion.split('.').map(item => item.trim()).filter(item => item.length > 0);
         let descriptionHtml = descriptionItems.map(item => `• ${item}`).join('<br>');
         let alignedDescriptionHtml = `<div style="text-align: left;">${descriptionHtml}</div>`;
-        
+        let horarioHtml = '';
+        if(event.hora_inicio){
+          let fin = event.hora_fin ? event.hora_fin.substring(0,5) : '?';
+          horarioHtml = `<p style="margin-bottom:6px;"><strong>Horario:</strong> ${event.hora_inicio.substring(0,5)} - ${fin}</p>`;
+        }
+
         if(user===this.sessionUser){
           Swal.fire({
             title: 'Detalle Agenda',
-            html: `<strong>Descripción:</strong><br>${alignedDescriptionHtml}`,
+            html: `${horarioHtml}<strong>Descripción:</strong><br>${alignedDescriptionHtml}`,
             showDenyButton: true,
             showCancelButton: true,
             confirmButtonText: 'Editar',
@@ -259,7 +286,7 @@ function weekCalendar() {
         }else{
           Swal.fire({
             title: 'Detalle Agenda',
-            html: `<strong>Descripción:</strong><br>${alignedDescriptionHtml}`,
+            html: `${horarioHtml}<strong>Descripción:</strong><br>${alignedDescriptionHtml}`,
             icon: 'info'
           });
         }
@@ -288,7 +315,7 @@ function weekCalendar() {
         return fetch("{{ route('eventos.store') }}",{
           method:'POST',
           headers:{ 'Content-Type':'application/json', 'X-CSRF-TOKEN':'{{ csrf_token() }}' },
-          body:JSON.stringify({ usuario:this.selectedUser, fecha:dayFull, descripcion:this.description })
+          body:JSON.stringify({ usuario:this.selectedUser, fecha:dayFull, descripcion:this.description, hora_inicio:this.horaInicio||null, hora_fin:this.horaFin||null })
         }).then(r=>r.json());
       });
 
@@ -302,7 +329,10 @@ function weekCalendar() {
     editEvent(e){
       this.isEditing=true; this.editingEventId=e.id; this.selectedUser=e.usuario.nombre;
       this.selectedDate=e.fechaShort;
-      this.selectedDates=[e.fechaShort]; this.description=e.descripcion; this.modalOpen=true;
+      this.selectedDates=[e.fechaShort]; this.description=e.descripcion;
+      this.horaInicio=e.hora_inicio ? e.hora_inicio.substring(0,5) : '';
+      this.horaFin=e.hora_fin ? e.hora_fin.substring(0,5) : '';
+      this.modalOpen=true;
     },
 
     updateEvent(){
@@ -315,11 +345,15 @@ function weekCalendar() {
       fetch(url,{
         method:'PUT',
         headers:{ 'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}' },
-        body:JSON.stringify({ descripcion:this.description })
+        body:JSON.stringify({ descripcion:this.description, hora_inicio:this.horaInicio||null, hora_fin:this.horaFin||null })
       }).then(r=>r.json()).then(data=>{
         if(data.error){ Swal.fire('Error',data.error,'error'); return; }
         let idx=this.events.findIndex(e=>e.id===this.editingEventId);
-        if(idx!==-1) this.events[idx].descripcion=this.description;
+        if(idx!==-1){
+          this.events[idx].descripcion=this.description;
+          this.events[idx].hora_inicio=this.horaInicio||null;
+          this.events[idx].hora_fin=this.horaFin||null;
+        }
 
         let original=this.selectedDates[0];
         let extraPromises=[];
