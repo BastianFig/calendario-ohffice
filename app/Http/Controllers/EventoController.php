@@ -63,10 +63,14 @@ class EventoController extends Controller
     
         Log::info('Evento guardado', $evento->toArray());
     
-        if ($usuario->nombre !== 'Rodrigo Esparza') {
-            Mail::to('rodrigo.esparza@ohffice.cl')->send(new EventoDetalleMail($evento));
+        try {
+            if ($usuario->nombre !== 'Rodrigo Esparza') {
+                Mail::to('rodrigo.esparza@ohffice.cl')->send(new EventoDetalleMail($evento));
+            }
+        } catch (\Exception $e) {
+            Log::warning('Correo no enviado, evento guardado igual: ' . $e->getMessage());
         }
-    
+
         return response()->json([
             'message' => 'Evento guardado exitosamente',
             'evento'  => $evento

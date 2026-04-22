@@ -87,19 +87,16 @@
             @for($i = 0; $i < 7; $i++)
               <td class="p-2">
                 <div @click="handleCellClick('{{ $user['name'] }}', weekDays[{{ $i }}])"
-                     :class="{'bg-white': getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]), 'bg-gray-50': !getEvent('{{ $user['name'] }}', weekDays[{{ $i }}])}"
-                     class="w-24 h-24 mx-auto border border-gray-200 flex items-center justify-center rounded cursor-pointer hover:bg-blue-100 transition-colors p-1">
-                  <template x-if="getEvent('{{ $user['name'] }}', weekDays[{{ $i }}])">
-                    <div class="text-center w-full">
-                      <template x-if="getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]).hora_inicio">
-                        <span class="block text-xs font-semibold text-blue-700" x-text="getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]).hora_inicio.substring(0,5) + ' - ' + (getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]).hora_fin ? getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]).hora_fin.substring(0,5) : '?')"></span>
-                      </template>
-                      <span class="text-xs text-black" x-text="truncate(getEvent('{{ $user['name'] }}', weekDays[{{ $i }}]).descripcion)"></span>
+                     :class="{'bg-white': getEvents('{{ $user['name'] }}', weekDays[{{ $i }}]).length > 0, 'bg-gray-50': getEvents('{{ $user['name'] }}', weekDays[{{ $i }}]).length === 0}"
+                     class="relative w-24 min-h-24 mx-auto border border-gray-200 flex flex-col rounded cursor-pointer hover:bg-blue-100 transition-colors p-1 gap-1">
+                  <template x-for="ev in getEvents('{{ $user['name'] }}', weekDays[{{ $i }}])" :key="ev.id">
+                    <div @click.stop="handleEventClick(ev, '{{ $user['name'] }}')"
+                         class="w-full bg-blue-50 border border-blue-200 rounded px-1 py-0.5 hover:bg-blue-200 text-center">
+                      <span x-show="ev.hora_inicio" class="block text-xs font-semibold text-blue-700" x-text="ev.hora_inicio ? ev.hora_inicio.substring(0,5) + ' - ' + (ev.hora_fin ? ev.hora_fin.substring(0,5) : '?') : ''"></span>
+                      <span class="text-xs text-black" x-text="truncate(ev.descripcion)"></span>
                     </div>
                   </template>
-                  <template x-if="!getEvent('{{ $user['name'] }}', weekDays[{{ $i }}])">
-                    <span class="text-xs text-gray-500">+</span>
-                  </template>
+                  <span x-show="'{{ $user['name'] }}' === sessionUser" class="absolute bottom-1 right-1 text-xs text-gray-400 leading-none">+</span>
                 </div>
               </td>
             @endfor
@@ -253,48 +250,47 @@ function weekCalendar() {
 
     /* ---------------- utils ---------------- */
     truncate(t){ return !t?'': (t.length>12? t.substring(0,13)+'…' : t); },
-    getEvent(user,dayShort){
-      return this.events.find(e=>{
+    getEvents(user,dayShort){
+      return this.events.filter(e=>{
         let nombre=(typeof e.usuario==='object' && e.usuario.nombre)? e.usuario.nombre : e.usuario;
         return nombre===user && e.fechaShort===dayShort;
       });
     },
 
-    handleCellClick(user,dayShort){
-      let event=this.getEvent(user,dayShort);
-      if(event){
-        let descriptionItems = event.descripcion.split('.').map(item => item.trim()).filter(item => item.length > 0);
-        let descriptionHtml = descriptionItems.map(item => `• ${item}`).join('<br>');
-        let alignedDescriptionHtml = `<div style="text-align: left;">${descriptionHtml}</div>`;
-        let horarioHtml = '';
-        if(event.hora_inicio){
-          let fin = event.hora_fin ? event.hora_fin.substring(0,5) : '?';
-          horarioHtml = `<p style="margin-bottom:6px;"><strong>Horario:</strong> ${event.hora_inicio.substring(0,5)} - ${fin}</p>`;
-        }
-
-        if(user===this.sessionUser){
-          Swal.fire({
-            title: 'Detalle Agenda',
-            html: `${horarioHtml}<strong>Descripción:</strong><br>${alignedDescriptionHtml}`,
-            showDenyButton: true,
-            showCancelButton: true,
-            confirmButtonText: 'Editar',
-            denyButtonText: 'Eliminar'
-          }).then(r=>{
-            if(r.isConfirmed) this.editEvent(event);
-            else if(r.isDenied) this.deleteEvent(event.id);
-          });
-        }else{
-          Swal.fire({
-            title: 'Detalle Agenda',
-            html: `${horarioHtml}<strong>Descripción:</strong><br>${alignedDescriptionHtml}`,
-            icon: 'info'
-          });
-        }
-      }else{
-        if(user===this.sessionUser) this.openModal(user,dayShort);
-        else Swal.fire('No hay eventos','','info');
+    handleEventClick(event,user){
+      let descriptionItems = event.descripcion.split('.').map(item => item.trim()).filter(item => item.length > 0);
+      let descriptionHtml = descriptionItems.map(item => `• ${item}`).join('<br>');
+      let alignedDescriptionHtml = `<div style="text-align: left;">${descriptionHtml}</div>`;
+      let horarioHtml = '';
+      if(event.hora_inicio){
+        let fin = event.hora_fin ? event.hora_fin.substring(0,5) : '?';
+        horarioHtml = `<p style="margin-bottom:6px;"><strong>Horario:</strong> ${event.hora_inicio.substring(0,5)} - ${fin}</p>`;
       }
+      if(user===this.sessionUser){
+        Swal.fire({
+          title: 'Detalle Agenda',
+          html: `${horarioHtml}<strong>Descripción:</strong><br>${alignedDescriptionHtml}`,
+          showDenyButton: true,
+          showCancelButton: true,
+          confirmButtonText: 'Editar',
+          denyButtonText: 'Eliminar',
+          cancelButtonText: 'Cancelar'
+        }).then(r=>{
+          if(r.isConfirmed) this.editEvent(event);
+          else if(r.isDenied) this.deleteEvent(event.id);
+        });
+      }else{
+        Swal.fire({
+          title: 'Detalle Agenda',
+          html: `${horarioHtml}<strong>Descripción:</strong><br>${alignedDescriptionHtml}`,
+          icon: 'info'
+        });
+      }
+    },
+
+    handleCellClick(user,dayShort){
+      if(user===this.sessionUser) this.openModal(user,dayShort);
+      else if(this.getEvents(user,dayShort).length===0) Swal.fire('No hay eventos','','info');
     },
 
     /* ======================= CRUD ======================= */
@@ -379,7 +375,7 @@ function weekCalendar() {
     /** --------------- ELIMINAR --------------- */
     deleteEvent(id){
       Swal.fire({title:'¿Eliminar evento?',text:'Esta acción no se puede deshacer.',icon:'warning',
-        showCancelButton:true,confirmButtonText:'Eliminar'})
+        showCancelButton:true,confirmButtonText:'Eliminar',cancelButtonText:'Cancelar'})
       .then(r=>{
         if(!r.isConfirmed) return;
         let url="{{ route('eventos.destroy',['id'=>'__id__']) }}".replace('__id__',id);
