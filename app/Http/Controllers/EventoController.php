@@ -64,8 +64,17 @@ class EventoController extends Controller
         Log::info('Evento guardado', $evento->toArray());
     
         try {
-            if ($usuario->nombre !== 'Rodrigo Esparza') {
-                Mail::to('rodrigo.esparza@ohffice.cl')->send(new EventoDetalleMail($evento));
+            $admins = [
+                'Rodrigo Esparza' => 'rodrigo.esparza@ohffice.cl',
+                'Andrea Chateau'  => 'andrea.chateau@ohffice.cl',
+            ];
+            $recipients = array_values(array_filter(
+                $admins,
+                fn($email, $name) => $name !== $usuario->nombre,
+                ARRAY_FILTER_USE_BOTH
+            ));
+            if (!empty($recipients)) {
+                Mail::to($recipients)->send(new EventoDetalleMail($evento));
             }
         } catch (\Exception $e) {
             Log::warning('Correo no enviado, evento guardado igual: ' . $e->getMessage());

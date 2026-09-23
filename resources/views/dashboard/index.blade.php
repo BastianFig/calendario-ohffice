@@ -72,6 +72,7 @@
             ['name' => 'Francisca Perez', 'type' => 'comercial'],
             ['name' => 'Constanza Contreras', 'type' => 'comercial'],
             ['name' => 'Carlota Sánchez', 'type' => 'comercial'],
+            ['name' => 'Andrea Chateau', 'type' => 'comercial'],
             ['name' => 'Rodrigo Calderon', 'type' => 'diseño'],
             ['name' => 'Rodrigo Gonzalez', 'type' => 'diseño'],
             ['name' => 'Constanza Diaz', 'type' => 'diseño'],
