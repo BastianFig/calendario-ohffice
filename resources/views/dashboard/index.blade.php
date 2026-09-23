@@ -34,21 +34,25 @@
         Siguiente
       </button>
     </div>
-    <div class="flex space-x-2">
-      <button @click="currentFilter = 'todos'" 
+    <div class="flex space-x-2 items-center">
+      <button @click="currentFilter = 'todos'"
               :class="{'bg-gray-300': currentFilter==='todos', 'bg-green-200': currentFilter!=='todos'}"
               class="text-green-900 font-semibold text-center py-1 px-2 rounded shadow-sm text-xs">
         Todos
       </button>
-      <button @click="currentFilter = 'comercial'" 
+      <button @click="currentFilter = 'comercial'"
               :class="{'bg-green-300': currentFilter==='comercial', 'bg-green-200': currentFilter!=='comercial'}"
               class="text-green-900 font-semibold text-center py-1 px-2 rounded shadow-sm text-xs">
         Comercial
       </button>
-      <button @click="currentFilter = 'diseño'" 
+      <button @click="currentFilter = 'diseño'"
               :class="{'bg-purple-300': currentFilter==='diseño', 'bg-purple-200': currentFilter!=='diseño'}"
               class="text-purple-900 font-semibold text-center py-1 px-2 rounded shadow-sm text-xs">
         Diseño
+      </button>
+      <button x-show="isAdmin" @click="openAdminModal()"
+              class="bg-orange-500 hover:bg-orange-600 text-white font-semibold text-center py-1 px-3 rounded shadow-sm text-xs">
+        + Agendar
       </button>
     </div>
   </div>
@@ -67,12 +71,10 @@
       <tbody class="divide-y divide-gray-200">
         @php
           $users = [
+            ['name' => 'Andrea Chateau', 'type' => 'comercial'],
             ['name' => 'Rodrigo Esparza', 'type' => 'comercial'],
-            ['name' => 'Paola Yanquez', 'type' => 'comercial'],
             ['name' => 'Francisca Perez', 'type' => 'comercial'],
             ['name' => 'Constanza Contreras', 'type' => 'comercial'],
-            ['name' => 'Carlota Sánchez', 'type' => 'comercial'],
-            ['name' => 'Andrea Chateau', 'type' => 'comercial'],
             ['name' => 'Rodrigo Calderon', 'type' => 'diseño'],
             ['name' => 'Rodrigo Gonzalez', 'type' => 'diseño'],
             ['name' => 'Constanza Diaz', 'type' => 'diseño'],
@@ -107,8 +109,95 @@
     </table>
   </div>
   
-  <div x-show="modalOpen" 
-       x-cloak 
+  <!-- Modal Admin: Agendar Múltiple -->
+  <div x-show="adminModalOpen"
+       x-cloak
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0 scale-90"
+       x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100 scale-100"
+       x-transition:leave-end="opacity-0 scale-90"
+       class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div class="bg-white rounded shadow-lg p-6 w-11/12 max-w-lg max-h-screen overflow-y-auto">
+      <h3 class="text-lg font-bold mb-4 text-orange-600">Agendar Múltiple</h3>
+
+      <!-- Personas -->
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-2">Personas</label>
+        <div class="grid grid-cols-2 gap-1 border border-gray-200 rounded p-2">
+          <template x-for="user in allUsers" :key="user.name">
+            <label class="flex items-center space-x-2 p-1 rounded hover:bg-orange-50 cursor-pointer">
+              <input type="checkbox" :value="user.name" x-model="adminSelectedUsers" class="h-4 w-4 text-orange-500">
+              <span class="text-xs text-gray-700" x-text="user.name"></span>
+            </label>
+          </template>
+        </div>
+        <p class="text-xs text-gray-400 mt-1" x-text="adminSelectedUsers.length + ' persona(s) seleccionada(s)'"></p>
+      </div>
+
+      <!-- Semana / Fechas -->
+      <div class="mb-4">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-semibold text-gray-700">Fechas</label>
+          <div class="flex items-center space-x-1">
+            <button @click="adminPreviousWeek()" class="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded">← Ant.</button>
+            <span class="text-xs text-gray-600 font-medium" x-text="adminWeekLabel"></span>
+            <button @click="adminNextWeek()" class="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded">Sig. →</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-1 border border-gray-200 rounded p-2">
+          <template x-for="day in adminWeekDays" :key="day">
+            <label class="flex items-center space-x-1 p-1 rounded hover:bg-orange-50 cursor-pointer">
+              <input type="checkbox" :value="day" x-model="adminSelectedDates" class="h-4 w-4 text-orange-500">
+              <span class="text-xs text-gray-700" x-text="formatDisplayDate(day)"></span>
+            </label>
+          </template>
+        </div>
+        <p class="text-xs text-gray-400 mt-1" x-text="adminSelectedDates.length + ' fecha(s) seleccionada(s)'"></p>
+      </div>
+
+      <!-- Horario -->
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Horario (opcional)</label>
+        <div class="flex items-center space-x-2">
+          <div class="flex-1">
+            <label class="block text-xs text-gray-500 mb-1">Desde</label>
+            <input type="time" x-model="adminHoraInicio" class="block w-full border border-gray-300 rounded-md p-2 text-sm">
+          </div>
+          <div class="flex-1">
+            <label class="block text-xs text-gray-500 mb-1">Hasta</label>
+            <input type="time" x-model="adminHoraFin" class="block w-full border border-gray-300 rounded-md p-2 text-sm">
+          </div>
+        </div>
+      </div>
+
+      <!-- Descripción -->
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700">Descripción</label>
+        <textarea x-model="adminDescription" class="mt-1 block w-full border border-gray-300 rounded-md p-2 text-sm" rows="3" placeholder="Ingrese la descripción del evento"></textarea>
+      </div>
+
+      <!-- Resumen -->
+      <div class="mb-4 bg-orange-50 border border-orange-200 rounded p-2 text-xs text-orange-700"
+           x-show="adminSelectedUsers.length > 0 && adminSelectedDates.length > 0">
+        Se crearán <strong x-text="adminSelectedUsers.length * adminSelectedDates.length"></strong> evento(s) en total.
+      </div>
+
+      <!-- Botones -->
+      <div class="flex justify-end space-x-2">
+        <button @click="adminModalOpen = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded text-sm">
+          Cancelar
+        </button>
+        <button @click="saveAdminEvent()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded text-sm font-semibold">
+          Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div x-show="modalOpen"
+       x-cloak
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0 scale-90"
        x-transition:enter-end="opacity-100 scale-100"
@@ -188,8 +277,17 @@ function weekCalendar() {
     events: [],
     isEditing: false,
     editingEventId: null,
+    isAdmin: {{ in_array(Auth::user()->rol, ['admin','administrador']) ? 'true' : 'false' }},
+    adminModalOpen: false,
+    adminSelectedUsers: [],
+    adminSelectedDates: [],
+    adminDescription: '',
+    adminHoraInicio: '',
+    adminHoraFin: '',
+    adminWeekStart: null,
+    allUsers: @json($users),
 
-    init() { this.fetchEvents(); },
+    init() { this.fetchEvents(); this.adminWeekStart = getMonday(new Date()); },
 
     /* ---------------- peticiones ---------------- */
     fetchEvents() {
@@ -197,6 +295,88 @@ function weekCalendar() {
         .then(r => r.json())
         .then(data => (this.events = data))
         .catch(console.error);
+    },
+
+    /* ---------------- admin: computed ---------------- */
+    get adminWeekDays() {
+      if (!this.adminWeekStart) return [];
+      let days = [];
+      for (let i = 0; i < 7; i++) {
+        let d = new Date(this.adminWeekStart);
+        d.setDate(d.getDate() + i);
+        days.push(this.formatDateShort(d));
+      }
+      return days;
+    },
+    get adminWeekLabel() {
+      if (!this.adminWeekStart) return '';
+      let end = new Date(this.adminWeekStart);
+      end.setDate(end.getDate() + 6);
+      return this.formatDate(this.adminWeekStart) + ' – ' + this.formatDate(end);
+    },
+
+    /* ---------------- admin: métodos ---------------- */
+    openAdminModal() {
+      this.adminSelectedUsers = [];
+      this.adminSelectedDates = [];
+      this.adminDescription = '';
+      this.adminHoraInicio = '';
+      this.adminHoraFin = '';
+      this.adminWeekStart = getMonday(new Date());
+      this.adminModalOpen = true;
+    },
+    adminPreviousWeek() {
+      let d = new Date(this.adminWeekStart);
+      d.setDate(d.getDate() - 7);
+      this.adminWeekStart = d;
+    },
+    adminNextWeek() {
+      let d = new Date(this.adminWeekStart);
+      d.setDate(d.getDate() + 7);
+      this.adminWeekStart = d;
+    },
+    saveAdminEvent() {
+      if (this.adminSelectedUsers.length === 0) {
+        Swal.fire('Sin personas', 'Selecciona al menos una persona.', 'warning'); return;
+      }
+      if (this.adminSelectedDates.length === 0) {
+        Swal.fire('Sin fechas', 'Selecciona al menos una fecha.', 'warning'); return;
+      }
+      if (this.adminDescription.trim().length === 0) {
+        Swal.fire('Descripción requerida', 'Por favor ingresa la descripción del evento.', 'warning'); return;
+      }
+
+      Swal.fire({ title: 'Guardando eventos…', allowOutsideClick: false, showConfirmButton: false });
+
+      let promises = [];
+      this.adminSelectedUsers.forEach(user => {
+        this.adminSelectedDates.forEach(date => {
+          promises.push(
+            fetch("{{ route('eventos.store') }}", {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+              body: JSON.stringify({
+                usuario: user,
+                fecha: date,
+                descripcion: this.adminDescription,
+                hora_inicio: this.adminHoraInicio || null,
+                hora_fin: this.adminHoraFin || null
+              })
+            }).then(r => r.json())
+          );
+        });
+      });
+
+      Promise.all(promises).then(() => {
+        Swal.close();
+        this.fetchEvents();
+        this.adminModalOpen = false;
+        Swal.fire('Eventos guardados', '', 'success');
+      }).catch(err => {
+        Swal.close();
+        console.error(err);
+        Swal.fire('Error', 'Ocurrió un error al guardar los eventos.', 'error');
+      });
     },
 
     /* ---------------- helpers de fechas ---------------- */
