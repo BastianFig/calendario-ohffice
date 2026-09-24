@@ -186,11 +186,12 @@
 
       <!-- Botones -->
       <div class="flex justify-end space-x-2">
-        <button @click="adminModalOpen = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded text-sm">
+        <button @click="adminModalOpen = false" :disabled="saving" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">
           Cancelar
         </button>
-        <button @click="saveAdminEvent()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded text-sm font-semibold">
-          Guardar
+        <button @click="saveAdminEvent()" :disabled="saving" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+          <span x-show="!saving">Guardar</span>
+          <span x-show="saving">Guardando…</span>
         </button>
       </div>
     </div>
@@ -244,14 +245,16 @@
         <textarea x-model="description" class="mt-1 block w-full border border-gray-300 rounded-md p-2" rows="3" placeholder="Ingrese la descripción del evento"></textarea>
       </div>
       <div class="flex justify-end space-x-2">
-        <button @click="closeModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+        <button @click="closeModal()" :disabled="saving" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed">
           Cancelar
         </button>
-        <button x-show="!isEditing" @click="saveEvent()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-          Guardar
+        <button x-show="!isEditing" @click="saveEvent()" :disabled="saving" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed">
+          <span x-show="!saving">Guardar</span>
+          <span x-show="saving">Guardando…</span>
         </button>
-        <button x-show="isEditing" @click="updateEvent()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
-          Actualizar
+        <button x-show="isEditing" @click="updateEvent()" :disabled="saving" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed">
+          <span x-show="!saving">Actualizar</span>
+          <span x-show="saving">Guardando…</span>
         </button>
       </div>
     </div>
@@ -278,6 +281,7 @@ function weekCalendar() {
     isEditing: false,
     editingEventId: null,
     isAdmin: {{ in_array(Auth::user()->rol, ['admin','administrador']) ? 'true' : 'false' }},
+    saving: false,
     adminModalOpen: false,
     adminSelectedUsers: [],
     adminSelectedDates: [],
@@ -346,6 +350,7 @@ function weekCalendar() {
         Swal.fire('Descripción requerida', 'Por favor ingresa la descripción del evento.', 'warning'); return;
       }
 
+      this.saving = true;
       Swal.fire({ title: 'Guardando eventos…', allowOutsideClick: false, showConfirmButton: false });
 
       let promises = [];
@@ -371,9 +376,11 @@ function weekCalendar() {
         Swal.close();
         this.fetchEvents();
         this.adminModalOpen = false;
+        this.saving = false;
         Swal.fire('Eventos guardados', '', 'success');
       }).catch(err => {
         Swal.close();
+        this.saving = false;
         console.error(err);
         Swal.fire('Error', 'Ocurrió un error al guardar los eventos.', 'error');
       });
@@ -482,6 +489,7 @@ function weekCalendar() {
         return;
       }
 
+      this.saving = true;
       Swal.fire({
         title:'Enviando Correo…',
         html:'<div class="flex justify-center items-center"><div class="loader"></div></div>',
@@ -498,9 +506,9 @@ function weekCalendar() {
       });
 
       Promise.all(promises).then(()=>{
-        Swal.close(); this.fetchEvents(); this.modalOpen=false;
+        Swal.close(); this.fetchEvents(); this.modalOpen=false; this.saving=false;
         Swal.fire('Evento(s) guardado(s)','','success');
-      }).catch(err=>{ Swal.close(); console.error(err); });
+      }).catch(err=>{ Swal.close(); this.saving=false; console.error(err); });
     },
 
     /** --------------- EDITAR --------------- */
@@ -519,6 +527,7 @@ function weekCalendar() {
         return;
       }
 
+      this.saving = true;
       let url="{{ route('eventos.update',['id'=>'__id__']) }}".replace('__id__',this.editingEventId);
       fetch(url,{
         method:'PUT',
@@ -548,9 +557,9 @@ function weekCalendar() {
         });
         return Promise.all(extraPromises);
       }).then(()=>{
-        this.fetchEvents(); this.modalOpen=false; this.isEditing=false; this.editingEventId=null;
+        this.fetchEvents(); this.modalOpen=false; this.isEditing=false; this.editingEventId=null; this.saving=false;
         Swal.fire('Evento actualizado','','success');
-      }).catch(console.error);
+      }).catch(err=>{ this.saving=false; console.error(err); });
     },
 
     /** --------------- ELIMINAR --------------- */
