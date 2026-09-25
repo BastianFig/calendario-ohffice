@@ -72,6 +72,7 @@
         @php
           $users = [
             ['name' => 'Andrea Chateau', 'type' => 'comercial'],
+             ['name' => 'Paula Madariaga', 'type' => 'comercial'],
             ['name' => 'Rodrigo Esparza', 'type' => 'comercial'],
             ['name' => 'Francisca Perez', 'type' => 'comercial'],
             ['name' => 'Constanza Contreras', 'type' => 'comercial'],
@@ -454,7 +455,7 @@ function weekCalendar() {
         let fin = event.hora_fin ? event.hora_fin.substring(0,5) : '?';
         horarioHtml = `<p style="margin-bottom:6px;"><strong>Horario:</strong> ${event.hora_inicio.substring(0,5)} - ${fin}</p>`;
       }
-      if(user===this.sessionUser){
+      if(user===this.sessionUser || this.isAdmin){
         Swal.fire({
           title: 'Detalle Agenda',
           html: `${horarioHtml}<strong>Descripción:</strong><br>${alignedDescriptionHtml}`,
